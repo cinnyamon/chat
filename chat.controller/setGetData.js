@@ -1,0 +1,63 @@
+const { randomUUID } = require("node:crypto");
+const { decryptSymmetric, encryptSymmetric } = require("../utils/cryptography");
+const { redis } = require("../db/redis");
+const { storeInSQL } = require("./chat.SQL");
+
+const CRYPT_KEY = process.env.CRYPT_KEY;
+
+async function setGetData(data) {
+  if (typeof data !== "string" || !data.trim()) return null;
+
+  const client = redis();
+  const { cipherText, iv, tag } = encryptSymmetric(CRYPT_KEY, data);
+
+  const messageId = randomUUID();
+  const messageData = {
+    message_id: messageId,
+    text: cipherText,
+    timestamp: Date.now(),
+    metadata: {
+      iv: iv,
+      tag: tag,
+    },
+  };
+
+  try {
+    await client.hSet(
+      `chat:messages:${messageId}`,
+      "data",
+      JSON.stringify(messageData)
+    );
+    await client.lPush("chat:order", messageId);
+    await storeInSQL(messageData);
+
+    const lastId = await client.lIndex("chat:order", 0);
+    const message = await client.hGetAll(`chat:messages:${lastId}`, "data");
+
+    const parsedMsg = JSON.parse(message.data);
+    parsedMsg.text = decryptSymmetric(
+      CRYPT_KEY,
+      parsedMsg.text,
+      parsedMsg.metadata.iv,
+      parsedMsg.metadata.tag
+    );
+
+    return [parsedMsg];
+  } catch (error) {
+    console.error("Fatal Redis error:", error);
+    return null;
+  }
+}
+
+function decryptMessages(message) {
+  message.text = decryptSymmetric(
+    CRYPT_KEY,
+    message.text,
+    message.metadata.iv,
+    message.metadata.tag
+  );
+
+  return message;
+}
+
+module.exports = { setGetData, decryptMessages };
