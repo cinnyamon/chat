@@ -3,13 +3,13 @@
 Create a postgres database first and then make a table with the name `chat_messages`:
 
     CREATE TABLE chat_messages (
-        id SERIAL PRIMARY KEY,
-        message_id UUID NOT NULL UNIQUE,
-        text TEXT NOT NULL,
-        timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        user_id VARCHAR(100),
-        metadata JSONB
-      );
+      id BIGSERIAL PRIMARY KEY,
+      message_id UUID NOT NULL UNIQUE,
+      text TEXT NOT NULL,
+      timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      user_id VARCHAR(100),
+      metadata JSONB
+    );
 
 Rename .env.example to .env and fill it up with your database information as well as the `CRYPT_KEY` using:
 

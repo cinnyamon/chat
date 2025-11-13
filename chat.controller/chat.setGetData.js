@@ -2,6 +2,7 @@ const { randomUUID } = require("node:crypto");
 const { decryptSymmetric, encryptSymmetric } = require("../utils/cryptography");
 const { redis } = require("../db/redis");
 const { storeInSQL } = require("./chat.SQL");
+const { decryptMessages } = require("../utils/chat.decryptMsg");
 
 const CRYPT_KEY = process.env.CRYPT_KEY;
 
@@ -34,13 +35,7 @@ async function setGetData(data) {
     const lastId = await client.lIndex("chat:order", 0);
     const message = await client.hGetAll(`chat:messages:${lastId}`, "data");
 
-    const parsedMsg = JSON.parse(message.data);
-    parsedMsg.text = decryptSymmetric(
-      CRYPT_KEY,
-      parsedMsg.text,
-      parsedMsg.metadata.iv,
-      parsedMsg.metadata.tag
-    );
+    const parsedMsg = decryptMessages(JSON.parse(message.data));
 
     return [parsedMsg];
   } catch (error) {
@@ -49,15 +44,4 @@ async function setGetData(data) {
   }
 }
 
-function decryptMessages(message) {
-  message.text = decryptSymmetric(
-    CRYPT_KEY,
-    message.text,
-    message.metadata.iv,
-    message.metadata.tag
-  );
-
-  return message;
-}
-
-module.exports = { setGetData, decryptMessages };
+module.exports = { setGetData };

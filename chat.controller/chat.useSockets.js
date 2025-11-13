@@ -1,6 +1,7 @@
 const { getFromSQL } = require("./chat.SQL");
 const { connectRedis, redis } = require("../db/redis");
-const { decryptMessages, setGetData } = require("./setGetData");
+const { setGetData } = require("./chat.setGetData");
+const { decryptMessages } = require("../utils/chat.decryptMsg");
 
 const useSockets = async (socket, io) => {
   await connectRedis();
@@ -10,7 +11,7 @@ const useSockets = async (socket, io) => {
 
   const lastIds = await client.lRange("chat:order", 0, 9);
   let oldMsgs = await Promise.all(
-    lastIds.map((id) => client.hGetAll(`chat:messages:${id}`))
+    lastIds.map((id) => client.hGetAll(`chat:messages:${id}`)).reverse()
   );
 
   if (oldMsgs.length < 10) {
